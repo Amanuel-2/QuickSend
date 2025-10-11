@@ -1,40 +1,51 @@
-const express = require('express');
-const multer = require('multer');
-const cors = require('cors');
+const express = require("express");
+const multer = require("multer");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+
 const app = express();
-const port = 8000;
+const PORT = 8000;
 
-const path = require('path');
-app.use('/image', express.static(path.join(__dirname, 'image')));
+app.use(cors());
+app.use(express.json());
 
-const fs = require('fs');
+// Storage for multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+const upload = multer({ storage });
 
-app.get('/files', (req, res) => {
-  fs.readdir(path.join(__dirname, 'image'), (err, files) => {
-    if (err) return res.status(500).send('Unable to list files');
-    res.json(files); // returns an array of filenames
+// Upload endpoint
+app.post("/upload", upload.single("file"), (req, res) => {
+  res.json({ message: "File uploaded successfully", file: req.file });
+});
+
+// Get all uploaded files
+app.get("/files", (req, res) => {
+  fs.readdir("uploads", (err, files) => {
+    if (err) return res.status(500).json({ error: "Unable to fetch files" });
+    res.json(files);
   });
 });
-app.use(cors());
-const fielstorageEngin = multer.diskStorage({
-    destination:(req,file,cb)=>{
-        cb(null,"./image");
-    },
-    filename:(req,file,cb)=>{
-        cb(null,Date.now()+"--"+file.originalname);
-    }
-})
-const upload = multer({storage:fielstorageEngin});
 
+// Delete a file
+app.delete("/files/:filename", (req, res) => {
+  const filePath = path.join(__dirname, "uploads", req.params.filename);
+  fs.unlink(filePath, (err) => {
+    if (err) return res.status(500).json({ error: "Unable to delete file" });
+    res.json({ message: "File deleted successfully" });
+  });
+});
 
-app.post("/single",upload.single("image"),(req,res)=>{
-    console.log(req.file);
-    res.send("requst success");
-})
-app.post("/multiple",upload.array("images",3),(req,res)=>{
-    console.log(req.files);
-    res.send("mulltiple file uploded successfuly")
-})
-app.listen(port,"0.0.0.0",()=>{
-    console.log(`server is listening on ${port}`);
-})
+// Serve uploaded files statically
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

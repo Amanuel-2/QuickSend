@@ -1,48 +1,78 @@
-import React, { useState } from 'react';
-
+import { useState, useEffect } from "react";
+import { QRCodeCanvas } from "qrcode.react";
+const API_url = "http://192.168.8.39:8000";
 function App() {
-  const [fileData, setFileData] = useState();
-  const [files,setFiles] = useState([]);
-  const filechangeHandler = (e) => {
-    setFileData(e.target.files[0]); // ✅ fixed
+  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
+
+  // Fetch files from backend
+  const fetchFiles = async () => {
+    const res = await fetch(`${API_url}/files`);
+    const data = await res.json();
+    setFiles(data);
   };
 
-  const onSubmitHandler = (e) => {
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
+  // Handle upload
+  const handleUpload = async (e) => {
     e.preventDefault();
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const data = new FormData();
-    data.append("image", fileData); // ✅ matches multer.single("image")
-
-    fetch("http://192.168.8.39:8000/single", { // ✅ use PC IP, not localhost
+    await fetch(`${API_url}/upload`, {
       method: "POST",
-      body: data,
-    })
-      .then((res) => res.text())
-      .then((result) => {
-        console.log("File sent successfully:", result);
-      })
-      .catch((error) => {
-        console.error("Upload error:", error.message);
-      });
+      body: formData,
+    });
+
+    setFile(null);
+    fetchFiles();
+  };
+
+  // Handle delete
+  const handleDelete = async (filename) => {
+    await fetch(`${API_url}/files/${filename}`, {
+      method: "DELETE",
+    });
+    fetchFiles();
   };
 
   return (
-    <div>
-      <h1>React app file uploading</h1>
-      <form onSubmit={onSubmitHandler}>
-        <input type="file" onChange={filechangeHandler} />
-        <br />
-        <button type="submit">Submit file to backend</button>
-      </form>
+    <div style={{ padding: "20px" }}>
+      <h2>📂 Image Upload & Delete</h2>
 
-      <h2>uploaded image</h2>
-      <div>
-        {files.map(file=>(
-        <div>
-            <img src={`http://192.168.8.39:8000/image/${file}`} alt={file} />
-            <p>{file}</p>
-        </div>
-      ))}
+      <form onSubmit={handleUpload}>
+        <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0])} />
+        <button type="submit">send</button>
+      </form>
+    <div>
+
+    <h3>scan to open</h3>
+
+      <QRCodeCanvas value="http://192.168.8.39:5173" size={200} />
+
+    </div>
+      <h3>Uploaded Images:</h3>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
+        {files.map((filename) => (
+          <div key={filename} style={{ textAlign: "center" }}>
+            <img
+              src={`${API_url}/uploads/${filename}`}
+              alt={filename}
+              style={{ width: "200px", height: "150px", objectFit: "cover", borderRadius: "8px" }}
+            />
+            <br />
+            <button
+              onClick={() => handleDelete(filename)}
+              style={{ marginTop: "5px", color: "white", background: "red", border: "none", padding: "5px 10px", borderRadius: "5px" }}
+            >
+              Delete
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
