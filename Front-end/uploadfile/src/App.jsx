@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-const API_url = "http://192.168.8.39:8000";
+import API from './API'
+const API_url = API;
 function App() {
   const [file, setFile] = useState(null);
   const [files, setFiles] = useState([]);
