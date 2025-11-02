@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { io } from "socket.io-client";
 import API from './API';
-import MobileSender from './MobileSender'
+import MobileSender from './MobileSender';
 const API_url = API;
 
 function App() {
