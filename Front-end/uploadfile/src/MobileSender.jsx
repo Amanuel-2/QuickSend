@@ -50,19 +50,22 @@ function MobileSender() {
             setUploadProgress(100);
 
             if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Mobile upload successful:', data);
                 setTimeout(() => {
                     setIsUploading(false);
                     setUploadComplete(true);
                     setUploadProgress(0);
                 }, 500);
             } else {
-                throw new Error('Upload failed');
+                const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+                throw new Error(errorData.error || 'Upload failed');
             }
         } catch (error) {
-            console.error('Upload failed:', error);
+            console.error('❌ Mobile upload failed:', error);
             setIsUploading(false);
             setUploadProgress(0);
-            alert('Upload failed. Please try again.');
+            alert(`Upload failed: ${error.message}. Please check if the server is running.`);
         }
     };
 

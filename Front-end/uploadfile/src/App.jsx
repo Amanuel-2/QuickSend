@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { io } from "socket.io-client";
-import API from './API'
+import API from './API';
 import MobileSender from './MobileSender'
 const API_url = API;
 
@@ -32,9 +32,17 @@ function App() {
 
   // Fetch files from backend
   const fetchFiles = async () => {
-    const res = await fetch(`${API_url}/files`);
-    const data = await res.json();
-    setFiles(data);
+    try {
+      const res = await fetch(`${API_url}/files`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch files');
+      }
+      const data = await res.json();
+      setFiles(data);
+    } catch (error) {
+      console.error('❌ Error fetching files:', error);
+      setFiles([]);
+    }
   };
 
   useEffect(() => {
@@ -99,7 +107,15 @@ function App() {
   // Handle upload
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file) {
+      console.error('No file selected');
+      setNotification({
+        type: 'error',
+        message: 'Please select a file first'
+      });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
 
     // Generate session ID
     const newSessionId = Date.now().toString();
@@ -110,21 +126,39 @@ function App() {
     formData.append("sessionId", newSessionId);
 
     try {
+      console.log(`📤 Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
       setUploadProgress(50);
+
       const response = await fetch(`${API_url}/upload`, {
         method: "POST",
         body: formData,
       });
 
       if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Upload successful:', data);
         setUploadProgress(100);
         setTimeout(() => {
           setCurrentScreen('qr');
           setUploadProgress(0);
         }, 500);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        console.error('❌ Upload failed:', errorData);
+        setNotification({
+          type: 'error',
+          message: errorData.error || 'Upload failed. Please try again.'
+        });
+        setTimeout(() => setNotification(null), 5000);
+        setUploadProgress(0);
       }
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('❌ Upload error:', error);
+      setNotification({
+        type: 'error',
+        message: `Upload failed: ${error.message}. Check if server is running.`
+      });
+      setTimeout(() => setNotification(null), 5000);
       setUploadProgress(0);
     }
   };
